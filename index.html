@@ -129,6 +129,24 @@
   .card img { width: 100%; height: auto; display: block; transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
   .card:hover img { transform: scale(1.03); }
 
+  .play-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    pointer-events: none;
+  }
+
+  .play-badge svg { width: 22px; height: 22px; margin-left: 3px; }
+
   .dl-btn {
     position: absolute;
     bottom: 10px;
@@ -248,6 +266,16 @@
 
   .lightbox.open img {
     transform: scale(1);
+  }
+
+  #lightboxVideo {
+    display: none;
+    width: min(90vw, 900px);
+    aspect-ratio: 16 / 9;
+    max-height: calc(100vh - 64px);
+    border-radius: 16px;
+    box-shadow: 0 0 40px rgba(255,255,255,0.15);
+    background: #000;
   }
 
   .photo-inner .dl-btn { position: absolute; bottom: 16px; right: 16px; width: 48px; height: 48px; }
@@ -406,6 +434,7 @@
   </div>
   <div class="photo-inner" id="photoInner">
     <img id="lightboxImg" src="" alt="">
+    <iframe id="lightboxVideo" src="" allow="autoplay" allowfullscreen frameborder="0"></iframe>
     <button class="share-btn" id="shareBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14l5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
     </button>
@@ -434,18 +463,68 @@
 
   const DRIVE_API_KEY = "AIzaSyBCt5GpgqBBIHBjqlsP9ZR1cwZo0ekYtkU";
 
-  const dates = [
-    {
-      id: "sept-4-26",
-      label: "9/4/26 lmhs game",
-      folderId: "1QrNuYRHZfkaJBGciVxrIfXUtyquqjA43"
-    },
-    {
-      id: "aug-20-26",
-      label: "8/20/26 shs game",
-      folderId: "1F4jRn9NfvYUPgkCJzWQ0JUjDMfrpqY2V"
+  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTLmRJYhW6MRLapHmFlzJWh6iDgvH7lATe7ajFqJnM3Wg-4t2vaHu2eQlhQz5NX5dzszUSniVBWkVmM/pub?gid=0&single=true&output=csv";
+
+  let dates = [];
+  let datesLoaded = false;
+
+  function slugify(str) {
+    return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else { inQuotes = false; }
+        } else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n' || c === '\r') {
+          if (field !== '' || row.length) { row.push(field); rows.push(row); row = []; field = ''; }
+          if (c === '\r' && text[i + 1] === '\n') i++;
+        } else field += c;
+      }
     }
-  ];
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  function formatDate(iso) {
+    const parts = (iso || '').split('-');
+    if (parts.length !== 3) return '';
+    const [y, m, d] = parts;
+    return `${parseInt(m, 10)}/${parseInt(d, 10)}/${y.slice(2)}`;
+  }
+
+  async function loadDates() {
+    try {
+      const res = await fetch(SHEET_CSV_URL);
+      const text = await res.text();
+      const rows = parseCSV(text).slice(1).filter(r => r[0] && r[2]);
+      dates = rows.map(r => {
+        const title = r[0];
+        const date = (r[1] || '').trim();
+        const folderId = r[2].trim();
+        return {
+          id: slugify(date ? `${date}-${title}` : title),
+          label: title,
+          date,
+          folderId
+        };
+      });
+    } catch (err) {
+      dates = [];
+    }
+    datesLoaded = true;
+  }
 
   const dateListEl = document.getElementById('dateList');
   const homeTipEl = document.getElementById('homeTip');
@@ -462,6 +541,7 @@
 
   const lightbox = document.getElementById('lightbox');
   const lightboxImg = document.getElementById('lightboxImg');
+  const lightboxVideo = document.getElementById('lightboxVideo');
   const lightboxDl = document.getElementById('lightboxDl');
   const closeBtn = document.getElementById('closeBtn');
   const prevBtn = document.getElementById('prevBtn');
@@ -485,9 +565,11 @@
   function previewUrl(fileId) { return `https://lh3.googleusercontent.com/d/${fileId}=w400`; }
   function fullUrl(fileId) { return `https://lh3.googleusercontent.com/d/${fileId}=w1600`; }
   function downloadUrl(fileId) { return `https://drive.google.com/uc?export=download&id=${fileId}`; }
+  function isVideo(f) { return f.mimeType && f.mimeType.startsWith('video/'); }
+  function videoEmbedUrl(fileId) { return `https://drive.google.com/file/d/${fileId}/preview`; }
 
   async function smartDownload(e, file) {
-    if (!navigator.canShare) return; // let the normal <a download> link proceed
+    if (!navigator.canShare || isVideo(file)) return; // let the normal <a download> link proceed
     e.preventDefault();
     try {
       const res = await fetch(downloadUrl(file.id));
@@ -511,11 +593,11 @@
   async function getFiles(dateObj) {
     if (filesCache[dateObj.id]) return filesCache[dateObj.id];
     const q = encodeURIComponent(`'${dateObj.folderId}' in parents and trashed = false`);
-    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&key=${DRIVE_API_KEY}&fields=files(id,name,mimeType,imageMediaMetadata)&pageSize=1000`;
+    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&key=${DRIVE_API_KEY}&fields=files(id,name,mimeType,thumbnailLink,videoMediaMetadata)&pageSize=1000`;
     const res = await fetch(url);
     const data = await res.json();
     if (!res.ok) throw new Error('drive error');
-    const files = (data.files || []).filter(f => f.mimeType && f.mimeType.startsWith('image/'));
+    const files = (data.files || []).filter(f => f.mimeType && (f.mimeType.startsWith('image/') || f.mimeType.startsWith('video/')));
     filesCache[dateObj.id] = files;
     return files;
   }
@@ -538,11 +620,17 @@
     homeTipEl.style.display = 'block';
     dateListEl.innerHTML = '';
 
+    if (dates.length === 0) {
+      dateListEl.innerHTML = '<div class="status" style="display:block">No games added yet.</div>';
+      return;
+    }
+
     dates.forEach(d => {
       const row = document.createElement('a');
       row.className = 'date-row';
       row.href = '#' + d.id;
-      row.innerHTML = `<div class="label">${d.label}</div><div class="count">view photos</div>`;
+      const sub = d.date ? formatDate(d.date) : 'view photos';
+      row.innerHTML = `<div class="label">${d.label}</div><div class="count">${sub}</div>`;
       dateListEl.appendChild(row);
     });
   }
@@ -582,17 +670,32 @@
         card.href = `#${dateObj.id}/${f.id}`;
 
         const img = document.createElement('img');
-        img.src = previewUrl(f.id);
         img.loading = 'lazy';
         img.decoding = 'async';
         img.style.aspectRatio = '4 / 5';
         img.style.objectFit = 'cover';
-        img.addEventListener('load', () => {
-          if (img.naturalWidth && img.naturalHeight) {
-            img.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+
+        if (isVideo(f)) {
+          img.src = f.thumbnailLink || '';
+          const vw = f.videoMediaMetadata && f.videoMediaMetadata.width;
+          const vh = f.videoMediaMetadata && f.videoMediaMetadata.height;
+          if (vw && vh) {
+            img.style.aspectRatio = `${vw} / ${vh}`;
             img.style.objectFit = '';
           }
-        }, { once: true });
+          const playBadge = document.createElement('div');
+          playBadge.className = 'play-badge';
+          playBadge.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+          card.appendChild(playBadge);
+        } else {
+          img.src = previewUrl(f.id);
+          img.addEventListener('load', () => {
+            if (img.naturalWidth && img.naturalHeight) {
+              img.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+              img.style.objectFit = '';
+            }
+          }, { once: true });
+        }
 
         const dlBtn = document.createElement('a');
         dlBtn.className = 'dl-btn';
@@ -628,7 +731,19 @@
     if (!activeFiles.length) return;
     activeIndex = idx;
     const f = activeFiles[idx];
-    lightboxImg.src = fullUrl(f.id);
+
+    if (isVideo(f)) {
+      lightboxImg.style.display = 'none';
+      lightboxImg.src = '';
+      lightboxVideo.style.display = 'block';
+      lightboxVideo.src = videoEmbedUrl(f.id);
+    } else {
+      lightboxVideo.style.display = 'none';
+      lightboxVideo.src = '';
+      lightboxImg.style.display = 'block';
+      lightboxImg.src = fullUrl(f.id);
+    }
+
     lightboxDl.href = downloadUrl(f.id);
     lightboxDl.setAttribute('download', f.name || '');
     lightboxDl.onclick = e => smartDownload(e, f);
@@ -640,13 +755,17 @@
     if (activeFiles.length < 2) return;
     [1, -1].forEach(d => {
       const i = (idx + d + activeFiles.length) % activeFiles.length;
-      const img = new Image();
-      img.src = fullUrl(activeFiles[i].id);
+      const f = activeFiles[i];
+      if (!isVideo(f)) {
+        const img = new Image();
+        img.src = fullUrl(f.id);
+      }
     });
   }
 
   function closeLightbox() {
     lightbox.classList.remove('open');
+    lightboxVideo.src = '';
   }
 
   function goPhoto(delta) {
@@ -738,7 +857,13 @@
   });
 
   window.addEventListener('hashchange', route);
-  route();
+
+  (async () => {
+    statusEl.style.display = 'block';
+    statusEl.textContent = 'Loading...';
+    await loadDates();
+    route();
+  })();
 </script>
 
 </body>

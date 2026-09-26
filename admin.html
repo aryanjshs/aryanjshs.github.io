@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: #000;
+    color: #fff;
+    font-family: 'Montserrat', -apple-system, "Helvetica Neue", Helvetica, sans-serif;
+    font-weight: 500;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 24px;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 6px;
+  }
+
+  input {
+    width: 100%;
+    background: #111;
+    border: 1px solid #262626;
+    color: #fff;
+    font-family: inherit;
+    font-size: 15px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    outline: none;
+    margin-bottom: 18px;
+  }
+
+  input:focus { border-color: #444; }
+
+  button {
+    background: #fff;
+    color: #000;
+    border: none;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px 22px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  button:hover { background: #ddd; }
+  button:disabled { background: #333; color: #888; cursor: default; }
+
+  button.secondary {
+    background: #111;
+    color: #fff;
+    border: 1px solid #262626;
+  }
+
+  button.secondary:hover { background: #1a1a1a; }
+
+  .gate {
+    max-width: 340px;
+    margin: 120px auto 0;
+    text-align: center;
+  }
+
+  .gate input { text-align: center; }
+
+  .msg {
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .msg.show { display: block; }
+  .msg.error { color: #ff6b6b; }
+  .msg.success { color: #7bd88f; }
+
+  .panel { display: none; }
+
+  .row { display: flex; gap: 12px; align-items: flex-end; }
+  .row > div { flex: 1; }
+
+  .preview-status {
+    font-size: 13px;
+    color: #666;
+    padding: 20px 0;
+  }
+
+  .preview-grid {
+    padding: 16px 0;
+    column-count: 3;
+    column-gap: 10px;
+  }
+
+  @media (max-width: 600px) { .preview-grid { column-count: 2; } }
+
+  .p-card {
+    position: relative;
+    overflow: hidden;
+    background: #111;
+    border-radius: 14px;
+    break-inside: avoid;
+    margin-bottom: 10px;
+  }
+
+  .p-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+  }
+
+  .play-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    pointer-events: none;
+  }
+
+  .play-badge svg { width: 18px; height: 18px; margin-left: 2px; }
+
+  .publish-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding-top: 8px;
+  }
+
+  .divider {
+    height: 1px;
+    background: #1a1a1a;
+    margin: 28px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="gate" id="gate">
+    <h1>enter passcode</h1>
+    <input id="passInput" type="password" placeholder="passcode" autocomplete="off">
+    <button id="unlockBtn" style="width:100%">unlock</button>
+    <div class="msg error" id="gateMsg">wrong passcode</div>
+  </div>
+
+  <div class="panel" id="panel">
+    <h1>add a game</h1>
+
+    <label>Title (shows on the home page)</label>
+    <input id="titleInput" type="text" placeholder="vs Lake Mary">
+
+    <label>Date (optional — shows as smaller text under the title, doesn't need to be in the title itself)</label>
+    <input id="dateInput" type="date">
+
+    <label>Google Drive folder link</label>
+    <div class="row">
+      <div><input id="folderInput" type="text" placeholder="paste the Drive folder share link"></div>
+      <div style="flex:0"><button class="secondary" id="previewBtn">preview</button></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="previewArea"></div>
+
+    <div class="publish-row" id="publishRow" style="display:none">
+      <button id="publishBtn">publish to site</button>
+      <span class="msg" id="publishMsg"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxjO-4MFZ1DKRuyY5lKgGRdl-nhY_6UHIIwYhll5d0coBNc3_u1I1b5apCm684MbvLOQg/exec";
+  const DRIVE_API_KEY = "AIzaSyBCt5GpgqBBIHBjqlsP9ZR1cwZo0ekYtkU";
+
+  const gate = document.getElementById('gate');
+  const panel = document.getElementById('panel');
+  const passInput = document.getElementById('passInput');
+  const unlockBtn = document.getElementById('unlockBtn');
+  const gateMsg = document.getElementById('gateMsg');
+
+  const titleInput = document.getElementById('titleInput');
+  const dateInput = document.getElementById('dateInput');
+  const folderInput = document.getElementById('folderInput');
+  const previewBtn = document.getElementById('previewBtn');
+  const previewArea = document.getElementById('previewArea');
+  const publishRow = document.getElementById('publishRow');
+  const publishBtn = document.getElementById('publishBtn');
+  const publishMsg = document.getElementById('publishMsg');
+
+  let enteredPassword = '';
+  let currentFolderId = '';
+
+  unlockBtn.addEventListener('click', () => {
+    enteredPassword = passInput.value;
+    if (!enteredPassword) return;
+    // This just unlocks the UI locally for convenience — the real check
+    // happens server-side when you actually publish, so a wrong guess
+    // here can't do anything even if someone bypasses this screen.
+    gate.style.display = 'none';
+    panel.style.display = 'block';
+  });
+
+  passInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') unlockBtn.click();
+  });
+
+  function extractFolderId(input) {
+    const trimmed = input.trim();
+    const match = trimmed.match(/folders\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    return trimmed; // assume they pasted a raw ID
+  }
+
+  function isVideo(f) { return f.mimeType && f.mimeType.startsWith('video/'); }
+  function previewUrl(fileId) { return `https://lh3.googleusercontent.com/d/${fileId}=w400`; }
+
+  previewBtn.addEventListener('click', async () => {
+    const folderId = extractFolderId(folderInput.value);
+    if (!folderId) return;
+    currentFolderId = folderId;
+
+    previewArea.innerHTML = '<div class="preview-status">Loading preview...</div>';
+    publishRow.style.display = 'none';
+
+    try {
+      const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+      const url = `https://www.googleapis.com/drive/v3/files?q=${q}&key=${DRIVE_API_KEY}&fields=files(id,name,mimeType,thumbnailLink)&pageSize=1000`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!res.ok) {
+        previewArea.innerHTML = '<div class="preview-status">Could not load that folder. Check the link and that it\'s shared publicly.</div>';
+        return;
+      }
+
+      const files = (data.files || []).filter(f => f.mimeType && (f.mimeType.startsWith('image/') || f.mimeType.startsWith('video/')));
+
+      if (files.length === 0) {
+        previewArea.innerHTML = '<div class="preview-status">No photos or videos found in that folder.</div>';
+        return;
+      }
+
+      const grid = document.createElement('div');
+      grid.className = 'preview-grid';
+
+      files.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'p-card';
+
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.src = isVideo(f) ? (f.thumbnailLink || '') : previewUrl(f.id);
+        card.appendChild(img);
+
+        if (isVideo(f)) {
+          const badge = document.createElement('div');
+          badge.className = 'play-badge';
+          badge.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+          card.appendChild(badge);
+        }
+
+        grid.appendChild(card);
+      });
+
+      previewArea.innerHTML = `<div class="preview-status">${files.length} item${files.length === 1 ? '' : 's'} found</div>`;
+      previewArea.appendChild(grid);
+      publishRow.style.display = 'flex';
+      publishMsg.className = 'msg';
+      publishMsg.textContent = '';
+    } catch (err) {
+      previewArea.innerHTML = '<div class="preview-status">Something went wrong loading the preview.</div>';
+    }
+  });
+
+  publishBtn.addEventListener('click', async () => {
+    const title = titleInput.value.trim();
+    if (!title || !currentFolderId) {
+      publishMsg.className = 'msg error show';
+      publishMsg.textContent = 'add a title and load a preview first';
+      return;
+    }
+
+    publishBtn.disabled = true;
+    publishMsg.className = 'msg show';
+    publishMsg.textContent = 'publishing...';
+
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ password: enteredPassword, title, date: dateInput.value, folderId: currentFolderId })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        publishMsg.className = 'msg success show';
+        publishMsg.textContent = 'published! it may take a few minutes to show up live.';
+        titleInput.value = '';
+        dateInput.value = '';
+        folderInput.value = '';
+        previewArea.innerHTML = '';
+        publishRow.style.display = 'none';
+      } else {
+        publishMsg.className = 'msg error show';
+        publishMsg.textContent = data.error || 'something went wrong';
+      }
+    } catch (err) {
+      publishMsg.className = 'msg error show';
+      publishMsg.textContent = 'could not reach the publish service';
+    }
+
+    publishBtn.disabled = false;
+  });
+</script>
+
+</body>
+</html>
