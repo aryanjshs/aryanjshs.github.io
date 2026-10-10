@@ -246,10 +246,62 @@
   }
 
   .photo-inner {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .media-box {
     position: relative;
-    display: inline-block;
+    display: block;
     line-height: 0;
   }
+
+  .caption {
+    width: 0;            /* contributes nothing to the width, so a long caption can't widen the photo box */
+    min-width: 100%;     /* ...then stretches to exactly the photo's width */
+    text-align: right;
+    margin-top: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: #ddd;
+    overflow-wrap: anywhere;
+  }
+
+  .caption:empty { display: none; }
+
+  .caption .emoji {
+    display: inline-block;
+    width: 1.2em;
+    height: 1.2em;
+    vertical-align: -0.22em;
+    margin: 0 0.04em;
+  }
+
+  .cap-rainbow, .cap-spectrum {
+    background-image: linear-gradient(90deg, #ff5f6d, #ffc371, #fff17a, #7ddc8a, #5cc8ff, #a78bfa, #ff7ad9, #ff5f6d);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .cap-rainbow { background-size: 100% 100%; }
+
+  .cap-spectrum {
+    background-size: 200% 100%;
+    background-repeat: repeat-x;
+    animation: spectrumShift 4s linear infinite;
+  }
+
+  @keyframes spectrumShift {
+    from { background-position: 0% 0; }
+    to   { background-position: 200% 0; }
+  }
+
+  /* leave room under the photo for the caption */
+  .lightbox.has-caption img { max-height: calc(100vh - 64px - 64px); }
+  .lightbox.has-caption #lightboxVideo { max-height: calc(100vh - 64px - 64px); }
 
   .lightbox img {
     display: block;
@@ -433,6 +485,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
   </div>
   <div class="photo-inner" id="photoInner">
+    <div class="media-box">
     <img id="lightboxImg" src="" alt="">
     <iframe id="lightboxVideo" src="" allow="autoplay" allowfullscreen frameborder="0"></iframe>
     <button class="share-btn" id="shareBtn">
@@ -441,6 +494,8 @@
     <a class="dl-btn" id="lightboxDl" href="" download="">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
     </a>
+    </div>
+    <div class="caption" id="caption"></div>
   </div>
 </div>
 
@@ -463,7 +518,8 @@
 
   const DRIVE_API_KEY = "AIzaSyBCt5GpgqBBIHBjqlsP9ZR1cwZo0ekYtkU";
 
-  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTLmRJYhW6MRLapHmFlzJWh6iDgvH7lATe7ajFqJnM3Wg-4t2vaHu2eQlhQz5NX5dzszUSniVBWkVmM/pub?gid=0&single=true&output=csv";
+  const SHEET_CSV_URL = "PASTE_SHEET_CSV_URL_HERE";
+  const APPS_SCRIPT_URL = "PASTE_APPS_SCRIPT_URL_HERE";
 
   let dates = [];
   let datesLoaded = false;
@@ -567,6 +623,82 @@
   function downloadUrl(fileId) { return `https://drive.google.com/uc?export=download&id=${fileId}`; }
   function isVideo(f) { return f.mimeType && f.mimeType.startsWith('video/'); }
   function videoEmbedUrl(fileId) { return `https://drive.google.com/file/d/${fileId}/preview`; }
+
+  /* ---------- captions ---------- */
+  const captionEl = document.getElementById('caption');
+  let captions = {};
+
+  async function loadCaptions() {
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.startsWith('PASTE')) return;
+    try {
+      const res = await fetch(`${APPS_SCRIPT_URL}?action=captions&t=${Date.now()}`);
+      const data = await res.json();
+      captions = data.captions || {};
+      // if a photo is already open (e.g. opened from a shared link), fill its caption in now
+      if (lightbox.classList.contains('open') && activeFiles[activeIndex]) {
+        applyCaption(activeFiles[activeIndex].id);
+      }
+    } catch (err) {
+      captions = {};
+    }
+  }
+
+  // Apple-style emoji on every platform (Windows etc. would otherwise show their own set)
+  const EMOJI_BASE = 'https://cdn.jsdelivr.net/npm/emoji-datasource-apple@16.0.0/img/apple/64/';
+  const EMOJI_RE = /(\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*)/gu;
+
+  function emojiCandidates(str) {
+    const cps = Array.from(str).map(c => c.codePointAt(0).toString(16).padStart(4, '0'));
+    const exact = cps.join('-');
+    const stripped = cps.filter(c => c !== 'fe0f').join('-');
+    const list = [exact];
+    if (stripped !== exact) list.push(stripped);
+    if (cps.length === 1) list.push(cps[0] + '-fe0f');
+    return list;
+  }
+
+  function makeEmoji(str) {
+    const tries = emojiCandidates(str);
+    let i = 0;
+    const img = document.createElement('img');
+    img.className = 'emoji';
+    img.alt = str;
+    img.draggable = false;
+    img.src = EMOJI_BASE + tries[0] + '.png';
+    img.onerror = () => {
+      i++;
+      if (i < tries.length) img.src = EMOJI_BASE + tries[i] + '.png';
+      else img.replaceWith(document.createTextNode(str)); // last resort: the device's own emoji
+    };
+    return img;
+  }
+
+  function renderCaptionInto(el, text) {
+    el.textContent = '';
+    let last = 0;
+    for (const m of text.matchAll(EMOJI_RE)) {
+      if (m.index > last) el.appendChild(document.createTextNode(text.slice(last, m.index)));
+      el.appendChild(makeEmoji(m[0]));
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  function applyCaption(fileId) {
+    const cap = captions[fileId];
+    captionEl.className = 'caption';
+    captionEl.style.color = '';
+    if (cap && cap.text) {
+      renderCaptionInto(captionEl, cap.text);
+      if (cap.style === 'rainbow') captionEl.classList.add('cap-rainbow');
+      else if (cap.style === 'spectrum') captionEl.classList.add('cap-spectrum');
+      else if (/^#[0-9a-f]{6}$/i.test(cap.style)) captionEl.style.color = cap.style;
+      lightbox.classList.add('has-caption');
+    } else {
+      captionEl.textContent = '';
+      lightbox.classList.remove('has-caption');
+    }
+  }
 
   async function smartDownload(e, file) {
     if (!navigator.canShare || isVideo(file)) return; // let the normal <a download> link proceed
@@ -747,6 +879,7 @@
     lightboxDl.href = downloadUrl(f.id);
     lightboxDl.setAttribute('download', f.name || '');
     lightboxDl.onclick = e => smartDownload(e, f);
+    applyCaption(f.id);
     lightbox.classList.add('open');
     preloadNeighbors(idx);
   }
@@ -861,6 +994,7 @@
   (async () => {
     statusEl.style.display = 'block';
     statusEl.textContent = 'Loading...';
+    loadCaptions(); // runs alongside, doesn't hold up the page
     await loadDates();
     route();
   })();

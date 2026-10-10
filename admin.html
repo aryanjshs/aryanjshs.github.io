@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="icon.ico">
 <title>Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,26 +20,13 @@
     min-height: 100vh;
   }
 
-  .wrap {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 40px 20px 80px;
-  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 20px 80px; }
 
-  h1 {
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0 0 24px;
-  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 24px; }
 
-  label {
-    display: block;
-    font-size: 13px;
-    color: #888;
-    margin-bottom: 6px;
-  }
+  label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; }
 
-  input {
+  input[type="text"], input[type="password"], input[type="date"], select {
     width: 100%;
     background: #111;
     border: 1px solid #262626;
@@ -51,7 +39,9 @@
     margin-bottom: 18px;
   }
 
-  input:focus { border-color: #444; }
+  input:focus, select:focus { border-color: #444; }
+  input[type="date"] { color-scheme: dark; }
+  select { color-scheme: dark; }
 
   button {
     background: #fff;
@@ -67,50 +57,27 @@
 
   button:hover { background: #ddd; }
   button:disabled { background: #333; color: #888; cursor: default; }
-
-  button.secondary {
-    background: #111;
-    color: #fff;
-    border: 1px solid #262626;
-  }
-
+  button.secondary { background: #111; color: #fff; border: 1px solid #262626; }
   button.secondary:hover { background: #1a1a1a; }
 
-  .gate {
-    max-width: 340px;
-    margin: 120px auto 0;
-    text-align: center;
-  }
-
+  .gate { max-width: 340px; margin: 120px auto 0; text-align: center; }
   .gate input { text-align: center; }
 
-  .msg {
-    font-size: 13px;
-    margin-top: 12px;
-    display: none;
-  }
-
-  .msg.show { display: block; }
+  .msg { font-size: 13px; display: none; }
+  .msg.show { display: inline-block; }
   .msg.error { color: #ff6b6b; }
   .msg.success { color: #7bd88f; }
+  .gate .msg { margin-top: 12px; }
 
   .panel { display: none; }
-
   .row { display: flex; gap: 12px; align-items: flex-end; }
   .row > div { flex: 1; }
+  .or { font-size: 12px; color: #555; margin: -6px 0 18px; }
 
-  .preview-status {
-    font-size: 13px;
-    color: #666;
-    padding: 20px 0;
-  }
+  .preview-status { font-size: 13px; color: #666; padding: 20px 0 4px; }
+  .hint { font-size: 12px; color: #555; padding: 0 0 8px; }
 
-  .preview-grid {
-    padding: 16px 0;
-    column-count: 3;
-    column-gap: 10px;
-  }
-
+  .preview-grid { padding: 12px 0; column-count: 3; column-gap: 10px; }
   @media (max-width: 600px) { .preview-grid { column-count: 2; } }
 
   .p-card {
@@ -120,46 +87,151 @@
     border-radius: 14px;
     break-inside: avoid;
     margin-bottom: 10px;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
   }
 
-  .p-card img {
-    width: 100%;
-    height: auto;
-    display: block;
-    aspect-ratio: 4 / 5;
-    object-fit: cover;
-  }
+  .p-card:hover { box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+  .p-card:active { transform: scale(0.98); }
+
+  .p-card img { width: 100%; height: auto; display: block; aspect-ratio: 4 / 5; object-fit: cover; }
 
   .play-badge {
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 44px;
-    height: 44px;
+    width: 44px; height: 44px;
     border-radius: 50%;
     background: rgba(0,0,0,0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     color: #fff;
     pointer-events: none;
   }
 
   .play-badge svg { width: 18px; height: 18px; margin-left: 2px; }
 
-  .publish-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    padding-top: 8px;
+  .cap-badge {
+    position: absolute;
+    left: 8px; bottom: 8px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #000;
+    display: none;
+    align-items: center; justify-content: center;
+    color: #fff;
+    pointer-events: none;
   }
 
-  .divider {
-    height: 1px;
-    background: #1a1a1a;
-    margin: 28px 0;
+  .cap-badge.on { display: flex; }
+  .cap-badge svg { width: 14px; height: 14px; }
+
+  .publish-row { display: flex; gap: 12px; align-items: center; padding-top: 8px; }
+  .divider { height: 1px; background: #1a1a1a; margin: 28px 0; }
+
+  /* ---------- caption editor ---------- */
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 50;
+    overflow-y: auto;
   }
+
+  .modal.open { display: flex; }
+
+  .modal-card {
+    width: 100%;
+    max-width: 440px;
+    background: #0b0b0b;
+    border: 1px solid #1f1f1f;
+    border-radius: 18px;
+    padding: 20px;
+    margin: auto;
+  }
+
+  .modal-media { position: relative; border-radius: 12px; overflow: hidden; background: #111; line-height: 0; }
+  .modal-media img { width: 100%; max-height: 320px; object-fit: contain; display: block; background: #000; }
+
+  .caption-preview {
+    min-height: 26px;
+    margin: 12px 0 18px;
+    text-align: right;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: #ddd;
+    overflow-wrap: anywhere;
+  }
+
+  .caption-preview.empty { color: #444; font-weight: 500; }
+
+  .emoji { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -0.22em; margin: 0 0.04em; }
+
+  .cap-rainbow, .cap-spectrum {
+    background-image: linear-gradient(90deg, #ff5f6d, #ffc371, #fff17a, #7ddc8a, #5cc8ff, #a78bfa, #ff7ad9, #ff5f6d);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .cap-rainbow { background-size: 100% 100%; }
+
+  .cap-spectrum {
+    background-size: 200% 100%;
+    background-repeat: repeat-x;
+    animation: spectrumShift 4s linear infinite;
+  }
+
+  @keyframes spectrumShift {
+    from { background-position: 0% 0; }
+    to   { background-position: 200% 0; }
+  }
+
+  .styles { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; }
+
+  .chip {
+    background: #111;
+    color: #bbb;
+    border: 1px solid #262626;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 999px;
+  }
+
+  .chip:hover { background: #1a1a1a; }
+  .chip.active { background: #fff; color: #000; border-color: #fff; }
+
+  .swatch {
+    width: 26px; height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid #1f1f1f;
+  }
+
+  .swatch:hover { transform: scale(1.1); }
+  .swatch.active { border-color: #fff; }
+
+  input[type="color"] {
+    width: 34px; height: 34px;
+    padding: 0;
+    border: 2px solid #1f1f1f;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    margin: 0;
+  }
+
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+
+  .modal-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .modal-actions .msg { margin-left: 4px; }
+  .modal .tip { font-size: 12px; color: #555; margin: -10px 0 16px; }
 </style>
 </head>
 <body>
@@ -173,18 +245,24 @@
   </div>
 
   <div class="panel" id="panel">
-    <h1>add a game</h1>
+    <h1>admin</h1>
+
+    <div id="pickWrap" style="display:none">
+      <label>Caption photos in a game that's already published</label>
+      <select id="gameSelect"><option value="">pick a game...</option></select>
+      <div class="or">or add a new game below</div>
+    </div>
 
     <label>Title (shows on the home page)</label>
     <input id="titleInput" type="text" placeholder="vs Lake Mary">
 
-    <label>Date (optional — shows as smaller text under the title, doesn't need to be in the title itself)</label>
+    <label>Date (optional, shows as smaller text under the title)</label>
     <input id="dateInput" type="date">
 
     <label>Google Drive folder link</label>
     <div class="row">
       <div><input id="folderInput" type="text" placeholder="paste the Drive folder share link"></div>
-      <div style="flex:0"><button class="secondary" id="previewBtn">preview</button></div>
+      <div style="flex:0"><button class="secondary" id="previewBtn" style="margin-bottom:18px">preview</button></div>
     </div>
 
     <div class="divider"></div>
@@ -198,56 +276,237 @@
   </div>
 </div>
 
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <div class="modal-media">
+      <img id="mImg" src="" alt="">
+      <div class="play-badge" id="mPlay" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+    </div>
+
+    <div class="caption-preview empty" id="mPreview">caption preview</div>
+
+    <label>Caption</label>
+    <input id="mText" type="text" maxlength="200" placeholder="say something 😭🔥" autocomplete="off">
+    <div class="tip">Emojis show as Apple emojis on the site, whatever device you're on.</div>
+
+    <label>Style</label>
+    <div class="styles" id="styleRow">
+      <button class="chip active" data-style="">plain</button>
+      <button class="chip" data-style="rainbow">rainbow</button>
+      <button class="chip" data-style="spectrum">spectrum cycle</button>
+    </div>
+    <div class="styles" id="colorRow">
+      <button class="swatch" data-color="#ff5f6d" style="background:#ff5f6d"></button>
+      <button class="swatch" data-color="#ffc371" style="background:#ffc371"></button>
+      <button class="swatch" data-color="#fff17a" style="background:#fff17a"></button>
+      <button class="swatch" data-color="#7ddc8a" style="background:#7ddc8a"></button>
+      <button class="swatch" data-color="#5cc8ff" style="background:#5cc8ff"></button>
+      <button class="swatch" data-color="#a78bfa" style="background:#a78bfa"></button>
+      <button class="swatch" data-color="#ff7ad9" style="background:#ff7ad9"></button>
+      <button class="swatch" data-color="#ffffff" style="background:#ffffff"></button>
+      <input type="color" id="mColor" value="#5cc8ff" title="custom color">
+    </div>
+
+    <div class="modal-actions">
+      <button id="mSave">save caption</button>
+      <button class="secondary" id="mRemove">remove</button>
+      <button class="secondary" id="mClose">close</button>
+      <span class="msg" id="mMsg"></span>
+    </div>
+  </div>
+</div>
+
 <script>
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxjO-4MFZ1DKRuyY5lKgGRdl-nhY_6UHIIwYhll5d0coBNc3_u1I1b5apCm684MbvLOQg/exec";
+  const APPS_SCRIPT_URL = "PASTE_APPS_SCRIPT_URL_HERE";
+  const SHEET_CSV_URL = "PASTE_SHEET_CSV_URL_HERE";
   const DRIVE_API_KEY = "AIzaSyBCt5GpgqBBIHBjqlsP9ZR1cwZo0ekYtkU";
 
-  const gate = document.getElementById('gate');
-  const panel = document.getElementById('panel');
-  const passInput = document.getElementById('passInput');
-  const unlockBtn = document.getElementById('unlockBtn');
-  const gateMsg = document.getElementById('gateMsg');
+  const isPlaceholder = s => !s || s.startsWith('PASTE');
 
-  const titleInput = document.getElementById('titleInput');
-  const dateInput = document.getElementById('dateInput');
-  const folderInput = document.getElementById('folderInput');
-  const previewBtn = document.getElementById('previewBtn');
-  const previewArea = document.getElementById('previewArea');
-  const publishRow = document.getElementById('publishRow');
-  const publishBtn = document.getElementById('publishBtn');
-  const publishMsg = document.getElementById('publishMsg');
+  const $ = id => document.getElementById(id);
+  const gate = $('gate'), panel = $('panel'), passInput = $('passInput'), unlockBtn = $('unlockBtn'), gateMsg = $('gateMsg');
+  const pickWrap = $('pickWrap'), gameSelect = $('gameSelect');
+  const titleInput = $('titleInput'), dateInput = $('dateInput'), folderInput = $('folderInput');
+  const previewBtn = $('previewBtn'), previewArea = $('previewArea');
+  const publishRow = $('publishRow'), publishBtn = $('publishBtn'), publishMsg = $('publishMsg');
+  const modal = $('modal'), mImg = $('mImg'), mPlay = $('mPlay'), mPreview = $('mPreview'), mText = $('mText');
+  const mColor = $('mColor'), mSave = $('mSave'), mRemove = $('mRemove'), mClose = $('mClose'), mMsg = $('mMsg');
 
   let enteredPassword = '';
   let currentFolderId = '';
+  let isExisting = false;
+  let games = [];
+  let captions = {};
+  const cardByFile = {};   // fileId -> { card, badge }
+  let editing = null;      // the file currently open in the editor
+  let mStyle = '';
 
-  unlockBtn.addEventListener('click', () => {
-    enteredPassword = passInput.value;
-    if (!enteredPassword) return;
-    // This just unlocks the UI locally for convenience — the real check
-    // happens server-side when you actually publish, so a wrong guess
-    // here can't do anything even if someone bypasses this screen.
-    gate.style.display = 'none';
-    panel.style.display = 'block';
-  });
-
-  passInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') unlockBtn.click();
-  });
+  /* ---------- helpers ---------- */
+  function isVideo(f) { return f.mimeType && f.mimeType.startsWith('video/'); }
+  function previewUrl(id) { return `https://lh3.googleusercontent.com/d/${id}=w400`; }
+  function largeUrl(id) { return `https://lh3.googleusercontent.com/d/${id}=w800`; }
 
   function extractFolderId(input) {
-    const trimmed = input.trim();
-    const match = trimmed.match(/folders\/([a-zA-Z0-9_-]+)/);
-    if (match) return match[1];
-    return trimmed; // assume they pasted a raw ID
+    const t = input.trim();
+    const m = t.match(/folders\/([a-zA-Z0-9_-]+)/);
+    return m ? m[1] : t;
   }
 
-  function isVideo(f) { return f.mimeType && f.mimeType.startsWith('video/'); }
-  function previewUrl(fileId) { return `https://lh3.googleusercontent.com/d/${fileId}=w400`; }
+  async function post(payload) {
+    // no custom headers on purpose: keeps it a "simple" request so the browser doesn't preflight
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ password: enteredPassword, ...payload })
+    });
+    return res.json();
+  }
 
-  previewBtn.addEventListener('click', async () => {
+  function parseCSV(text) {
+    const rows = []; let row = []; let field = ''; let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+        else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n' || c === '\r') {
+          if (field !== '' || row.length) { row.push(field); rows.push(row); row = []; field = ''; }
+          if (c === '\r' && text[i + 1] === '\n') i++;
+        } else field += c;
+      }
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  /* ---------- Apple emoji (same approach as the live site) ---------- */
+  const EMOJI_BASE = 'https://cdn.jsdelivr.net/npm/emoji-datasource-apple@16.0.0/img/apple/64/';
+  const EMOJI_RE = /(\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*)/gu;
+
+  function emojiCandidates(str) {
+    const cps = Array.from(str).map(c => c.codePointAt(0).toString(16).padStart(4, '0'));
+    const exact = cps.join('-');
+    const stripped = cps.filter(c => c !== 'fe0f').join('-');
+    const list = [exact];
+    if (stripped !== exact) list.push(stripped);
+    if (cps.length === 1) list.push(cps[0] + '-fe0f');
+    return list;
+  }
+
+  function makeEmoji(str) {
+    const tries = emojiCandidates(str);
+    let i = 0;
+    const img = document.createElement('img');
+    img.className = 'emoji';
+    img.alt = str;
+    img.draggable = false;
+    img.src = EMOJI_BASE + tries[0] + '.png';
+    img.onerror = () => {
+      i++;
+      if (i < tries.length) img.src = EMOJI_BASE + tries[i] + '.png';
+      else img.replaceWith(document.createTextNode(str));
+    };
+    return img;
+  }
+
+  function renderCaptionInto(el, text) {
+    el.textContent = '';
+    let last = 0;
+    for (const m of text.matchAll(EMOJI_RE)) {
+      if (m.index > last) el.appendChild(document.createTextNode(text.slice(last, m.index)));
+      el.appendChild(makeEmoji(m[0]));
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  /* ---------- gate ---------- */
+  async function unlock() {
+    enteredPassword = passInput.value;
+    if (!enteredPassword) return;
+    gateMsg.classList.remove('show');
+    unlockBtn.disabled = true;
+
+    // Real check, done by the script on Google's servers. Nothing about the passcode lives on this page.
+    if (!isPlaceholder(APPS_SCRIPT_URL)) {
+      try {
+        const data = await post({ action: 'check' });
+        if (!data.success) {
+          gateMsg.classList.add('show');
+          unlockBtn.disabled = false;
+          return;
+        }
+      } catch (err) {
+        gateMsg.textContent = 'could not reach the server';
+        gateMsg.classList.add('show');
+        unlockBtn.disabled = false;
+        return;
+      }
+    }
+
+    gate.style.display = 'none';
+    panel.style.display = 'block';
+    unlockBtn.disabled = false;
+    loadGames();
+    loadCaptions();
+  }
+
+  unlockBtn.addEventListener('click', unlock);
+  passInput.addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+
+  /* ---------- published games + captions ---------- */
+  async function loadGames() {
+    if (isPlaceholder(SHEET_CSV_URL)) return;
+    try {
+      const res = await fetch(SHEET_CSV_URL);
+      const rows = parseCSV(await res.text()).slice(1).filter(r => r[0] && r[2]);
+      games = rows.map(r => ({ title: r[0], date: (r[1] || '').trim(), folderId: r[2].trim() }));
+      renderGameOptions();
+    } catch (err) { /* picker just stays hidden */ }
+  }
+
+  function renderGameOptions() {
+    if (!games.length) return;
+    gameSelect.innerHTML = '<option value="">pick a game...</option>' +
+      games.map((g, i) => `<option value="${i}">${g.title.replace(/</g, '&lt;')}${g.date ? ' (' + g.date + ')' : ''}</option>`).join('');
+    pickWrap.style.display = 'block';
+  }
+
+  gameSelect.addEventListener('change', () => {
+    const g = games[gameSelect.value];
+    if (!g) return;
+    titleInput.value = g.title;
+    dateInput.value = g.date;
+    folderInput.value = g.folderId;
+    loadPreview(true);
+  });
+
+  folderInput.addEventListener('input', () => { isExisting = false; gameSelect.value = ''; });
+
+  async function loadCaptions() {
+    if (isPlaceholder(APPS_SCRIPT_URL)) return;
+    try {
+      const res = await fetch(`${APPS_SCRIPT_URL}?action=captions&t=${Date.now()}`);
+      captions = (await res.json()).captions || {};
+      Object.keys(cardByFile).forEach(id => refreshBadge(id));
+    } catch (err) { captions = {}; }
+  }
+
+  function refreshBadge(id) {
+    const entry = cardByFile[id];
+    if (entry) entry.badge.classList.toggle('on', !!(captions[id] && captions[id].text));
+  }
+
+  /* ---------- preview grid ---------- */
+  previewBtn.addEventListener('click', () => loadPreview(false));
+
+  async function loadPreview(existing) {
     const folderId = extractFolderId(folderInput.value);
     if (!folderId) return;
     currentFolderId = folderId;
+    isExisting = !!existing;
 
     previewArea.innerHTML = '<div class="preview-status">Loading preview...</div>';
     publishRow.style.display = 'none';
@@ -264,11 +523,12 @@
       }
 
       const files = (data.files || []).filter(f => f.mimeType && (f.mimeType.startsWith('image/') || f.mimeType.startsWith('video/')));
-
       if (files.length === 0) {
         previewArea.innerHTML = '<div class="preview-status">No photos or videos found in that folder.</div>';
         return;
       }
+
+      Object.keys(cardByFile).forEach(k => delete cardByFile[k]);
 
       const grid = document.createElement('div');
       grid.className = 'preview-grid';
@@ -285,23 +545,115 @@
         if (isVideo(f)) {
           const badge = document.createElement('div');
           badge.className = 'play-badge';
-          badge.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+          badge.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
           card.appendChild(badge);
         }
 
+        const capBadge = document.createElement('div');
+        capBadge.className = 'cap-badge';
+        capBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>';
+        card.appendChild(capBadge);
+
+        cardByFile[f.id] = { card, badge: capBadge };
+        refreshBadge(f.id);
+        card.addEventListener('click', () => openEditor(f));
         grid.appendChild(card);
       });
 
-      previewArea.innerHTML = `<div class="preview-status">${files.length} item${files.length === 1 ? '' : 's'} found</div>`;
+      previewArea.innerHTML = `<div class="preview-status">${files.length} item${files.length === 1 ? '' : 's'} found</div><div class="hint">tap any photo or video to caption it</div>`;
       previewArea.appendChild(grid);
-      publishRow.style.display = 'flex';
+      publishRow.style.display = isExisting ? 'none' : 'flex';
       publishMsg.className = 'msg';
       publishMsg.textContent = '';
     } catch (err) {
       previewArea.innerHTML = '<div class="preview-status">Something went wrong loading the preview.</div>';
     }
-  });
+  }
 
+  /* ---------- caption editor ---------- */
+  function setStyle(style) {
+    mStyle = style;
+    document.querySelectorAll('#styleRow .chip').forEach(c => c.classList.toggle('active', c.dataset.style === style));
+    document.querySelectorAll('#colorRow .swatch').forEach(s => s.classList.toggle('active', s.dataset.color === style));
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const text = mText.value;
+    mPreview.className = 'caption-preview';
+    mPreview.style.color = '';
+    if (!text.trim()) {
+      mPreview.textContent = 'caption preview';
+      mPreview.classList.add('empty');
+      return;
+    }
+    renderCaptionInto(mPreview, text);
+    if (mStyle === 'rainbow') mPreview.classList.add('cap-rainbow');
+    else if (mStyle === 'spectrum') mPreview.classList.add('cap-spectrum');
+    else if (/^#[0-9a-f]{6}$/i.test(mStyle)) mPreview.style.color = mStyle;
+  }
+
+  function openEditor(f) {
+    editing = f;
+    const existing = captions[f.id];
+    mImg.src = isVideo(f) ? (f.thumbnailLink || '') : largeUrl(f.id);
+    mPlay.style.display = isVideo(f) ? 'flex' : 'none';
+    mText.value = existing ? existing.text : '';
+    mMsg.className = 'msg';
+    mMsg.textContent = '';
+    setStyle(existing ? existing.style : '');
+    modal.classList.add('open');
+    mText.focus();
+  }
+
+  function closeEditor() { modal.classList.remove('open'); editing = null; }
+
+  mText.addEventListener('input', updatePreview);
+
+  document.querySelectorAll('#styleRow .chip').forEach(c => c.addEventListener('click', () => setStyle(c.dataset.style)));
+  document.querySelectorAll('#colorRow .swatch').forEach(s => s.addEventListener('click', () => { mColor.value = s.dataset.color; setStyle(s.dataset.color); }));
+  mColor.addEventListener('input', () => setStyle(mColor.value));
+
+  mClose.addEventListener('click', closeEditor);
+  modal.addEventListener('click', e => { if (e.target === modal) closeEditor(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('open')) closeEditor(); });
+
+  async function saveCaption(text, style) {
+    if (!editing) return;
+    if (isPlaceholder(APPS_SCRIPT_URL)) {
+      mMsg.className = 'msg error show';
+      mMsg.textContent = 'publish service not connected yet';
+      return;
+    }
+    const fileId = editing.id;
+    mSave.disabled = true; mRemove.disabled = true;
+    mMsg.className = 'msg show';
+    mMsg.style.color = '';
+    mMsg.textContent = 'saving...';
+
+    try {
+      const data = await post({ action: 'caption', fileId, text, style });
+      if (data.success) {
+        if (text.trim()) captions[fileId] = { text: text.trim(), style };
+        else delete captions[fileId];
+        refreshBadge(fileId);
+        mMsg.className = 'msg success show';
+        mMsg.textContent = text.trim() ? 'saved' : 'removed';
+      } else {
+        mMsg.className = 'msg error show';
+        mMsg.textContent = data.error || 'something went wrong';
+      }
+    } catch (err) {
+      mMsg.className = 'msg error show';
+      mMsg.textContent = 'could not reach the server';
+    }
+    mSave.disabled = false; mRemove.disabled = false;
+  }
+
+  mSave.addEventListener('click', () => saveCaption(mText.value, mStyle));
+  mRemove.addEventListener('click', () => { mText.value = ''; setStyle(''); saveCaption('', ''); });
+
+  /* ---------- publish a new game ---------- */
   publishBtn.addEventListener('click', async () => {
     const title = titleInput.value.trim();
     if (!title || !currentFolderId) {
@@ -315,13 +667,10 @@
     publishMsg.textContent = 'publishing...';
 
     try {
-      const res = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({ password: enteredPassword, title, date: dateInput.value, folderId: currentFolderId })
-      });
-      const data = await res.json();
-
+      const data = await post({ title, date: dateInput.value, folderId: currentFolderId });
       if (data.success) {
+        games.unshift({ title, date: dateInput.value, folderId: currentFolderId });
+        renderGameOptions();
         publishMsg.className = 'msg success show';
         publishMsg.textContent = 'published! it may take a few minutes to show up live.';
         titleInput.value = '';
